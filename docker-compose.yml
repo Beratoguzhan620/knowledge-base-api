@@ -1,7 +1,7 @@
 # One command: docker compose up --build
 # The first start downloads two small models (about 1.3 GB) into a volume; later starts reuse them.
 # Without downloads: docker compose -f docker-compose.yml -f docker-compose.light.yml up --build
-# API reference: http://localhost:8080/scalar
+# The app: http://localhost:8080 · API reference: http://localhost:8080/scalar
 name: knowledge-base
 
 services:
@@ -53,14 +53,14 @@ services:
       models:
         condition: service_completed_successfully
         required: false
-    ports:
-      - "8080:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__KnowledgeBase: "Host=db;Database=knowledge_base;Username=knowledge_base;Password=${POSTGRES_PASSWORD:-knowledge-base-local}"
       Database__MigrateOnStartup: "true"
       Jwt__SigningKey: ${JWT_SIGNING_KEY:-local-signing-key-change-me-in-the-env-file-0123456789}
       Auth__AttemptsPerMinute: ${AUTH_ATTEMPTS_PER_MINUTE:-10}
+      # nginx is in front: per-address limits must see the browser's address, not nginx's.
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
       Embeddings__Provider: OpenAI
       Embeddings__BaseUrl: http://ollama:11434/v1/
       Embeddings__Model: ${EMBEDDING_MODEL:-nomic-embed-text}
@@ -76,6 +76,22 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    restart: on-failure
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
 volumes:
   db-data:
