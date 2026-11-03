@@ -1,3 +1,4 @@
+using KnowledgeBase.Core.Conversations;
 using KnowledgeBase.Core.Documents;
 using KnowledgeBase.Core.Users;
 using KnowledgeBase.Core.Workspaces;
@@ -23,6 +24,10 @@ public sealed class KnowledgeBaseDbContext(DbContextOptions<KnowledgeBaseDbConte
     public DbSet<DocumentFile> DocumentFiles => Set<DocumentFile>();
 
     public DbSet<Chunk> Chunks => Set<Chunk>();
+
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+
+    public DbSet<Message> Messages => Set<Message>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

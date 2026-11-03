@@ -1,5 +1,5 @@
-# Runs without downloading models: the built-in embeddings instead of Ollama.
-# Search still works by shared words and word stems; CI uses this to stay fast.
+# Runs without downloading models: the built-in embeddings and extractive answers instead of Ollama.
+# Search still works by shared words and word stems, and answers quote the documents; CI uses this to stay fast.
 #   docker compose -f docker-compose.yml -f docker-compose.light.yml up --build
 services:
   ollama:
@@ -9,3 +9,5 @@ services:
   api:
     environment:
       Embeddings__Provider: Local
+      Chat__Provider: Local
+      Answers__MinSimilarity: "0.25"

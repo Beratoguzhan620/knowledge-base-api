@@ -1,5 +1,5 @@
 # One command: docker compose up --build
-# The first start downloads the embedding model (about 300 MB) into a volume; later starts reuse it.
+# The first start downloads two small models (about 1.3 GB) into a volume; later starts reuse them.
 # Without downloads: docker compose -f docker-compose.yml -f docker-compose.light.yml up --build
 # API reference: http://localhost:8080/scalar
 name: knowledge-base
@@ -21,6 +21,10 @@ services:
 
   ollama:
     image: ollama/ollama:0.40.10
+    environment:
+      # Room for the instructions, six passages and a few earlier turns.
+      OLLAMA_CONTEXT_LENGTH: "8192"
+      OLLAMA_KEEP_ALIVE: 1h
     volumes:
       - ollama-models:/root/.ollama
     healthcheck:
@@ -37,7 +41,7 @@ services:
         condition: service_healthy
     environment:
       OLLAMA_HOST: http://ollama:11434
-      MODELS: ${EMBEDDING_MODEL:-nomic-embed-text}
+      MODELS: ${EMBEDDING_MODEL:-nomic-embed-text} ${CHAT_MODEL:-qwen2.5:1.5b}
     entrypoint: ["sh", "-c", "for model in $$MODELS; do ollama pull $$model || exit 1; done"]
 
   api:
@@ -62,6 +66,11 @@ services:
       Embeddings__Model: ${EMBEDDING_MODEL:-nomic-embed-text}
       Embeddings__DocumentPrefix: "search_document: "
       Embeddings__QueryPrefix: "search_query: "
+      Chat__Provider: OpenAI
+      Chat__BaseUrl: http://ollama:11434/v1/
+      Chat__Model: ${CHAT_MODEL:-qwen2.5:1.5b}
+      # nomic-embed-text scores unrelated passages around 0.4 and related ones above 0.5.
+      Answers__MinSimilarity: "0.5"
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q Healthy <&3"]
       interval: 5s

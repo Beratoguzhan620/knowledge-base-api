@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using System.Text.Unicode;
 using System.Threading.RateLimiting;
 using KnowledgeBase.Api.Common;
+using KnowledgeBase.Api.Features.Conversations;
 using KnowledgeBase.Api.Features.Auth;
 using KnowledgeBase.Api.Features.Documents;
 using KnowledgeBase.Api.Features.Indexing;
@@ -49,6 +50,14 @@ builder.Services.AddOptions<IndexerOptions>()
     .Validate(o => o.LeaseMinutes >= 1 && o.PollSeconds >= 1, "Indexer:LeaseMinutes and Indexer:PollSeconds must be at least 1.")
     .ValidateOnStart();
 builder.Services.AddSingleton<IndexingSignal>();
+builder.Services.AddKnowledgeBaseAnswers(builder.Configuration);
+builder.Services.AddOptions<AnswerOptions>()
+    .Bind(builder.Configuration.GetSection(AnswerOptions.Section))
+    .Validate(o => o.Sources is >= 1 and <= 20, "Answers:Sources must be between 1 and 20.")
+    .Validate(o => o.MinSimilarity is >= -1 and <= 1, "Answers:MinSimilarity must be between -1 and 1.")
+    .Validate(o => o.HistoryTurns is >= 0 and <= 10, "Answers:HistoryTurns must be between 0 and 10.")
+    .ValidateOnStart();
+builder.Services.AddScoped<AnswerService>();
 builder.Services.AddSingleton<DocumentIndexer>();
 builder.Services.AddHostedService(services => services.GetRequiredService<DocumentIndexer>());
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
@@ -69,6 +78,11 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy(AuthEndpoints.RateLimit, context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = perMinute, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    // Questions per person: each one costs a model call.
+    var questionsPerMinute = builder.Configuration.GetValue("Answers:QuestionsPerMinute", 20);
+    options.AddPolicy(ConversationEndpoints.RateLimit, context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.FindFirst("sub")?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = questionsPerMinute, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     options.OnRejected = async (context, _) =>
     {
         context.HttpContext.Response.Headers.RetryAfter = "60";
@@ -123,6 +137,7 @@ app.MapWorkspaceEndpoints();
 app.MapMemberEndpoints();
 app.MapDocumentEndpoints();
 app.MapSearchEndpoints();
+app.MapConversationEndpoints();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
 app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
