@@ -33,8 +33,8 @@ public sealed class DocumentTests
     public void Indexing_counts_attempts_and_ends_ready_with_the_model()
     {
         var document = NewDocument();
-        document.StartIndexing();
-        Assert.Equal((DocumentStatus.Indexing, 1), (document.Status, document.Attempts));
+        document.StartIndexing(Now, Now.AddMinutes(10));
+        Assert.Equal((DocumentStatus.Indexing, 1, Now.AddMinutes(10)), (document.Status, document.Attempts, document.NextAttemptAt));
 
         document.MarkReady("nomic-embed-text", Now.AddSeconds(5));
 
@@ -47,11 +47,11 @@ public sealed class DocumentTests
     public void A_failed_attempt_goes_back_in_the_queue_for_later_until_it_gives_up()
     {
         var document = NewDocument();
-        document.StartIndexing();
+        document.StartIndexing(Now, Now.AddMinutes(10));
         document.MarkFailed("The embedding service did not answer.", Now.AddSeconds(30));
         Assert.Equal((DocumentStatus.Queued, Now.AddSeconds(30)), (document.Status, document.NextAttemptAt));
 
-        document.StartIndexing();
+        document.StartIndexing(Now.AddSeconds(30), Now.AddMinutes(10));
         document.MarkFailed("The embedding service did not answer.", retryAt: null);
         Assert.Equal(DocumentStatus.Failed, document.Status);
         Assert.Equal(2, document.Attempts);
@@ -61,13 +61,17 @@ public sealed class DocumentTests
     }
 
     [Fact]
-    public void Only_queued_documents_are_picked_up_and_one_being_indexed_cannot_be_requeued()
+    public void A_document_being_indexed_is_left_alone_until_its_worker_s_lease_runs_out()
     {
         var document = NewDocument();
-        document.StartIndexing();
+        document.StartIndexing(Now, Now.AddMinutes(10));
 
-        Assert.Equal(ErrorCodes.InvalidState, Assert.Throws<DomainException>(document.StartIndexing).Code);
-        Assert.Equal(ErrorCodes.InvalidState, Assert.Throws<DomainException>(() => document.Requeue(Now)).Code);
+        Assert.Equal(ErrorCodes.InvalidState, Assert.Throws<DomainException>(() => document.StartIndexing(Now.AddMinutes(5), Now.AddMinutes(15))).Code);
+        Assert.Equal(ErrorCodes.InvalidState, Assert.Throws<DomainException>(() => document.Requeue(Now.AddMinutes(5))).Code);
+
+        // The first worker died; after its lease another one takes over.
+        document.StartIndexing(Now.AddMinutes(11), Now.AddMinutes(21));
+        Assert.Equal((DocumentStatus.Indexing, 2), (document.Status, document.Attempts));
     }
 
     [Fact]
