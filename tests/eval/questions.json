@@ -1,0 +1,43 @@
+{
+  "answerable": [
+    { "q": "How many days does a customer have to send a product back?", "doc": "Returns and refunds", "heading": null },
+    { "q": "Can an opened bag of coffee be returned?", "doc": "Returns and refunds", "heading": null },
+    { "q": "How does a customer start a return?", "doc": "Returns and refunds", "heading": "How to start a return" },
+    { "q": "How long is the prepaid return code valid?", "doc": "Returns and refunds", "heading": "How to start a return" },
+    { "q": "When does the money come back to the card?", "doc": "Returns and refunds", "heading": "Refunds" },
+    { "q": "How long does a bank transfer refund take for cash on delivery orders?", "doc": "Returns and refunds", "heading": "Refunds" },
+    { "q": "Is the shipping cost refunded?", "doc": "Returns and refunds", "heading": "Refunds" },
+    { "q": "Can I swap my grinder for a different one?", "doc": "Returns and refunds", "heading": "Exchanges" },
+    { "q": "What should a customer do when a product arrives broken?", "doc": "Returns and refunds", "heading": "Faulty or damaged products" },
+    { "q": "What time do orders have to be placed to ship the same day?", "doc": "Shipping", "heading": null },
+    { "q": "Which courier company do you use?", "doc": "Shipping", "heading": "Carriers" },
+    { "q": "How long does delivery to Izmir take?", "doc": "Shipping", "heading": "Carriers" },
+    { "q": "Above what amount is delivery free?", "doc": "Shipping", "heading": "Costs" },
+    { "q": "How much is next-morning delivery in Samsun?", "doc": "Shipping", "heading": "Costs" },
+    { "q": "Can the delivery address be changed after ordering?", "doc": "Shipping", "heading": "Changing the address" },
+    { "q": "Do you send orders abroad?", "doc": "Shipping", "heading": "Customs" },
+    { "q": "What water temperature is used for the V60?", "doc": "Brewing guide", "heading": "V60" },
+    { "q": "How long should a French press steep?", "doc": "Brewing guide", "heading": "French press" },
+    { "q": "How much coffee goes in one cup of Turkish coffee?", "doc": "Brewing guide", "heading": "Turkish coffee" },
+    { "q": "What is the product code of the Kenya AA beans?", "doc": "Brewing guide", "heading": "Product codes" },
+    { "q": "KHV-002", "doc": "Brewing guide", "heading": "Product codes" },
+    { "q": "How quickly must support reply to an email?", "doc": "Support team handbook", "heading": "Response times" },
+    { "q": "Who handles a customer who was charged twice?", "doc": "Support team handbook", "heading": "Escalation" },
+    { "q": "What discount can support give without approval?", "doc": "Support team handbook", "heading": "Goodwill gestures" },
+    { "q": "How should we talk to customers?", "doc": "Support team handbook", "heading": "Tone" },
+    { "q": "How often should the grinder burrs be cleaned?", "doc": "Equipment care", "page": 1 },
+    { "q": "How do I descale the kettle?", "doc": "Equipment care", "page": 2 },
+    { "q": "What does E2 on the kettle display mean?", "doc": "Equipment care", "page": 2 },
+    { "q": "Is a broken glass covered by the warranty?", "doc": "Equipment care", "page": 3 },
+    { "q": "Para iadesi kaç günde yapılır?", "doc": "İade politikası", "heading": "Para iadesi" },
+    { "q": "Öğütücüyü başka bir modelle değiştirebilir miyim?", "doc": "İade politikası", "heading": "Değişim" },
+    { "q": "İade kodu kaç gün geçerli?", "doc": "İade politikası", "heading": "İade nasıl başlatılır" }
+  ],
+  "outside": [
+    "Who painted the Mona Lisa?",
+    "What is the capital of Australia?",
+    "How do I reset my router?",
+    "What are your opening hours on Sundays in the Ankara shop?",
+    "Bugün hava nasıl olacak?"
+  ]
+}

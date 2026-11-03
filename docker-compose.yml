@@ -59,6 +59,7 @@ services:
       Database__MigrateOnStartup: "true"
       Jwt__SigningKey: ${JWT_SIGNING_KEY:-local-signing-key-change-me-in-the-env-file-0123456789}
       Auth__AttemptsPerMinute: ${AUTH_ATTEMPTS_PER_MINUTE:-10}
+      Answers__QuestionsPerMinute: ${QUESTIONS_PER_MINUTE:-20}
       # nginx is in front: per-address limits must see the browser's address, not nginx's.
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
       Embeddings__Provider: OpenAI
