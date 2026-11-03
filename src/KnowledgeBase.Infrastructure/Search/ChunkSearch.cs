@@ -16,10 +16,13 @@ public enum SearchMode
     Keyword,
 }
 
-/// <summary>A passage found for a question, with where it ranked in each kind of search.</summary>
+/// <summary>
+/// A passage found for a question, with where it ranked in each kind of search. <see cref="WordShare"/> is the share
+/// of the question's words (after stemming and dropping common words) that the passage contains.
+/// </summary>
 public sealed record SearchHit(
     Guid ChunkId, Guid DocumentId, string DocumentTitle, int Ordinal, string? Heading, int? Page, string Text,
-    double Score, int? VectorRank, int? KeywordRank, double? Similarity);
+    double Score, int? VectorRank, int? KeywordRank, double? Similarity, double WordShare);
 
 /// <summary>
 /// Finds the passages of one workspace that best match a question. Two searches run in one SQL statement: the
@@ -75,7 +78,8 @@ public sealed class ChunkSearch(NpgsqlDataSource dataSource, IEmbeddingGenerator
                 reader.GetDouble(7),
                 reader.IsDBNull(8) ? null : (int)reader.GetInt64(8),
                 reader.IsDBNull(9) ? null : (int)reader.GetInt64(9),
-                reader.IsDBNull(10) ? null : reader.GetDouble(10)));
+                reader.IsDBNull(10) ? null : reader.GetDouble(10),
+                reader.GetDouble(11)));
         }
 
         return hits;
@@ -95,7 +99,8 @@ public sealed class ChunkSearch(NpgsqlDataSource dataSource, IEmbeddingGenerator
         ),
         keyword_hits AS (
             SELECT c.id,
-                   row_number() OVER (ORDER BY ts_rank_cd(c.search, q.query) DESC, c.id) AS rank
+                   row_number() OVER (ORDER BY ts_rank_cd(c.search, q.query) DESC, c.id) AS rank,
+                   share.value AS word_share
             FROM chunks c
             JOIN documents d ON d.id = c.document_id
             -- Any of the question's words, not all of them: a question is worded differently from the answer.
@@ -104,6 +109,12 @@ public sealed class ChunkSearch(NpgsqlDataSource dataSource, IEmbeddingGenerator
                 WHEN 'english' THEN websearch_to_tsquery('english'::regconfig, @question)
                 WHEN 'turkish' THEN websearch_to_tsquery('turkish'::regconfig, @question)
                 ELSE websearch_to_tsquery('simple'::regconfig, @question) END)::text, ' & ', ' | ')::tsquery AS query) q
+            -- How many of the question's words the passage has: a passage sharing one common word is not an answer.
+            CROSS JOIN LATERAL (SELECT coalesce(avg(CASE WHEN c.search @@ quote_literal(lexeme)::tsquery THEN 1.0 ELSE 0.0 END), 0) AS value
+                FROM unnest(tsvector_to_array(to_tsvector(CASE c.language
+                    WHEN 'english' THEN 'english'::regconfig
+                    WHEN 'turkish' THEN 'turkish'::regconfig
+                    ELSE 'simple'::regconfig END, @question))) AS lexeme) share
             WHERE @useKeyword AND c.workspace_id = @workspace AND d.status = 'Ready' AND c.search @@ q.query
             ORDER BY ts_rank_cd(c.search, q.query) DESC, c.id
             LIMIT @candidates
@@ -111,12 +122,12 @@ public sealed class ChunkSearch(NpgsqlDataSource dataSource, IEmbeddingGenerator
         fused AS (
             SELECT coalesce(v.id, k.id) AS id,
                    coalesce(1.0 / (@k + v.rank), 0) + coalesce(1.0 / (@k + k.rank), 0) AS score,
-                   v.rank AS vector_rank, k.rank AS keyword_rank, v.similarity
+                   v.rank AS vector_rank, k.rank AS keyword_rank, v.similarity, coalesce(k.word_share, 0) AS word_share
             FROM vector_hits v
             FULL JOIN keyword_hits k ON k.id = v.id
         )
         SELECT c.id, c.document_id, d.title, c.ordinal, c.heading, c.page, c.text,
-               f.score::float8, f.vector_rank, f.keyword_rank, f.similarity::float8
+               f.score::float8, f.vector_rank, f.keyword_rank, f.similarity::float8, f.word_share::float8
         FROM fused f
         JOIN chunks c ON c.id = f.id
         JOIN documents d ON d.id = c.document_id

@@ -37,7 +37,7 @@ curl -sf "$api/api/workspaces/$workspace/search?q=how%20long%20do%20refunds%20ta
 
 conversation=$(curl -sf "$api/api/workspaces/$workspace/conversations" "${auth[@]}" -H 'Content-Type: application/json' -d '{}' | jq -r .id)
 answer=$(curl -sf "$api/api/workspaces/$workspace/conversations/$conversation/messages" "${auth[@]}" -H 'Content-Type: application/json' \
-  -d '{"question":"How long does it take to get a refund?"}')
+  -d '{"question":"When are refunds paid back to the card?"}')
 echo "$answer" | jq -r '.answer | "\(.model) · \(.outcome) · \(.durationMs) ms\n\(.content)\ncited: \([.citations[] | .heading] | join(", "))"'
 echo "$answer" | jq -e '.answer.outcome == "Answered" and (.answer.citations | map(.heading) | index("Refunds")) != null' > /dev/null
 
