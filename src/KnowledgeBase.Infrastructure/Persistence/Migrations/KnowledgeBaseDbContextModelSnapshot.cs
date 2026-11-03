@@ -23,6 +23,97 @@ namespace KnowledgeBase.Infrastructure.Persistence.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "vector");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("KnowledgeBase.Core.Conversations.Conversation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_conversations");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_conversations_user_id");
+
+                    b.HasIndex("WorkspaceId", "UserId", "UpdatedAt")
+                        .HasDatabaseName("ix_conversations_workspace_id_user_id_updated_at");
+
+                    b.ToTable("conversations", (string)null);
+                });
+
+            modelBuilder.Entity("KnowledgeBase.Core.Conversations.Message", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int?>("DurationMs")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_ms");
+
+                    b.Property<bool?>("Helpful")
+                        .HasColumnType("boolean")
+                        .HasColumnName("helpful");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("model");
+
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("outcome");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("role");
+
+                    b.HasKey("Id")
+                        .HasName("pk_messages");
+
+                    b.HasIndex("ConversationId", "CreatedAt")
+                        .HasDatabaseName("ix_messages_conversation_id_created_at");
+
+                    b.ToTable("messages", (string)null);
+                });
+
             modelBuilder.Entity("KnowledgeBase.Core.Documents.Chunk", b =>
                 {
                     b.Property<Guid>("Id")
@@ -297,6 +388,71 @@ namespace KnowledgeBase.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_workspaces_created_by");
 
                     b.ToTable("workspaces", (string)null);
+                });
+
+            modelBuilder.Entity("KnowledgeBase.Core.Conversations.Conversation", b =>
+                {
+                    b.HasOne("KnowledgeBase.Core.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_conversations_users_user_id");
+
+                    b.HasOne("KnowledgeBase.Core.Workspaces.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_conversations_workspaces_workspace_id");
+                });
+
+            modelBuilder.Entity("KnowledgeBase.Core.Conversations.Message", b =>
+                {
+                    b.HasOne("KnowledgeBase.Core.Conversations.Conversation", null)
+                        .WithMany()
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_messages_conversations_conversation_id");
+
+                    b.OwnsMany("KnowledgeBase.Core.Conversations.Citation", "Citations", b1 =>
+                        {
+                            b1.Property<Guid>("MessageId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd();
+
+                            b1.Property<Guid>("ChunkId");
+
+                            b1.Property<Guid>("DocumentId");
+
+                            b1.Property<string>("DocumentTitle")
+                                .IsRequired();
+
+                            b1.Property<string>("Heading");
+
+                            b1.Property<int>("Number");
+
+                            b1.Property<int?>("Page");
+
+                            b1.Property<string>("Quote")
+                                .IsRequired();
+
+                            b1.HasKey("MessageId", "__synthesizedOrdinal");
+
+                            b1.ToTable("messages");
+
+                            b1
+                                .ToJson("citations")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("MessageId")
+                                .HasConstraintName("fk_messages_messages_message_id");
+                        });
+
+                    b.Navigation("Citations");
                 });
 
             modelBuilder.Entity("KnowledgeBase.Core.Documents.Chunk", b =>
