@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
@@ -14,7 +15,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     public const int MaxFileMegabytes = 1;
     public const int WorkspaceStorageMegabytes = 3;
 
-    private readonly PostgreSqlContainer _database = new PostgreSqlBuilder("pgvector/pgvector:pg17").Build();
+    private readonly PostgreSqlContainer _database = new PostgreSqlBuilder("pgvector/pgvector:0.8.7-pg17").Build();
 
     public string ConnectionString => _database.GetConnectionString();
 
@@ -27,6 +28,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Auth:AttemptsPerMinute", "100000");
         builder.UseSetting("Limits:MaxFileMegabytes", MaxFileMegabytes.ToString(System.Globalization.CultureInfo.InvariantCulture));
         builder.UseSetting("Limits:WorkspaceStorageMegabytes", WorkspaceStorageMegabytes.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        // No background indexing: tests index when they choose to, so what they see does not depend on timing.
+        builder.UseSetting("Indexer:Workers", "0");
+        builder.UseSetting("Indexer:MaxAttempts", "2");
     }
 
     public async Task<T?> ScalarAsync<T>(string sql, params object[] parameters)
@@ -41,6 +45,19 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
         var result = await command.ExecuteScalarAsync();
         return result is null or DBNull ? default : (T)result;
+    }
+
+    /// <summary>Indexes everything due in a workspace, the way the background workers would.</summary>
+    public async Task<int> IndexAsync(Guid workspaceId)
+    {
+        var indexer = Services.GetRequiredService<Api.Features.Indexing.DocumentIndexer>();
+        var count = 0;
+        while (await indexer.IndexNextAsync(workspaceId, CancellationToken.None))
+        {
+            count++;
+        }
+
+        return count;
     }
 
     public async Task InitializeAsync()

@@ -1,10 +1,12 @@
 # One command: docker compose up --build
+# The first start downloads the embedding model (about 300 MB) into a volume; later starts reuse it.
+# Without downloads: docker compose -f docker-compose.yml -f docker-compose.light.yml up --build
 # API reference: http://localhost:8080/scalar
 name: knowledge-base
 
 services:
   db:
-    image: pgvector/pgvector:pg17
+    image: pgvector/pgvector:0.8.7-pg17
     environment:
       POSTGRES_DB: knowledge_base
       POSTGRES_USER: knowledge_base
@@ -17,12 +19,36 @@ services:
       timeout: 5s
       retries: 20
 
+  ollama:
+    image: ollama/ollama:0.40.10
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # Downloads the models once, then exits.
+  models:
+    image: ollama/ollama:0.40.10
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      MODELS: ${EMBEDDING_MODEL:-nomic-embed-text}
+    entrypoint: ["sh", "-c", "for model in $$MODELS; do ollama pull $$model || exit 1; done"]
+
   api:
     build: .
     restart: on-failure
     depends_on:
       db:
         condition: service_healthy
+      models:
+        condition: service_completed_successfully
+        required: false
     ports:
       - "8080:8080"
     environment:
@@ -31,6 +57,11 @@ services:
       Database__MigrateOnStartup: "true"
       Jwt__SigningKey: ${JWT_SIGNING_KEY:-local-signing-key-change-me-in-the-env-file-0123456789}
       Auth__AttemptsPerMinute: ${AUTH_ATTEMPTS_PER_MINUTE:-10}
+      Embeddings__Provider: OpenAI
+      Embeddings__BaseUrl: http://ollama:11434/v1/
+      Embeddings__Model: ${EMBEDDING_MODEL:-nomic-embed-text}
+      Embeddings__DocumentPrefix: "search_document: "
+      Embeddings__QueryPrefix: "search_query: "
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q Healthy <&3"]
       interval: 5s
@@ -39,3 +70,4 @@ services:
 
 volumes:
   db-data:
+  ollama-models:

@@ -15,7 +15,7 @@ namespace KnowledgeBase.Api.Features.Documents;
 /// queued for the indexer. A file that cannot be read is refused here, before anything is stored.
 /// </summary>
 internal sealed partial class DocumentIntake(
-    KnowledgeBaseDbContext db, IOptions<DocumentLimits> limits, TimeProvider clock, ILogger<DocumentIntake> logger)
+    KnowledgeBaseDbContext db, IOptions<DocumentLimits> limits, Indexing.IndexingSignal signal, TimeProvider clock, ILogger<DocumentIntake> logger)
 {
     public async Task<Document> AddAsync(Guid workspaceId, Guid userId, string fileName, byte[] content, string? title, CancellationToken ct)
     {
@@ -60,6 +60,7 @@ internal sealed partial class DocumentIntake(
         db.Chunks.AddRange(drafts.Select(d => Chunk.Create(document, d)));
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
+        signal.Notify();
 
         LogAdded(logger, document.Id, workspaceId, format, drafts.Count, document.Language);
         return document;
