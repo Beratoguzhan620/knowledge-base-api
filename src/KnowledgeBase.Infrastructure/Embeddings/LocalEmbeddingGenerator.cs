@@ -22,6 +22,8 @@ public sealed class LocalEmbeddingGenerator : IEmbeddingGenerator
 
     public string Model => ModelName;
 
+    internal static bool IsStopWord(string word) => StopWords.Contains(word);
+
     public Task<float[][]> EmbedAsync(IReadOnlyList<string> texts, EmbeddingPurpose purpose, CancellationToken ct) =>
         Task.FromResult(texts.Select(Embed).ToArray());
 
