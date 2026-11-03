@@ -169,12 +169,13 @@ internal static class DocumentEndpoints
     }
 
     private static async Task<Accepted<DocumentResponse>> Reindex(
-        Guid workspaceId, Guid documentId, ClaimsPrincipal user, KnowledgeBaseDbContext db, TimeProvider clock, CancellationToken ct)
+        Guid workspaceId, Guid documentId, ClaimsPrincipal user, KnowledgeBaseDbContext db, Indexing.IndexingSignal signal, TimeProvider clock, CancellationToken ct)
     {
         await WorkspaceAccess.RequireAsync(db, workspaceId, user, Role.Editor, ct);
         var document = await Find(db, workspaceId, documentId, ct);
         document.Requeue(clock.GetUtcNow());
         await db.SaveChangesAsync(ct);
+        signal.Notify();
         return TypedResults.Accepted($"/api/workspaces/{workspaceId}/documents/{documentId}",
             await Project(db, db.Documents.Where(d => d.Id == documentId)).SingleAsync(ct));
     }

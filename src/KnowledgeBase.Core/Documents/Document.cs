@@ -43,7 +43,10 @@ public sealed class Document
     /// <summary>How many times indexing has been tried since the document was queued.</summary>
     public int Attempts { get; private set; }
 
-    /// <summary>When a queued document may be picked up; later than now after a failed attempt.</summary>
+    /// <summary>
+    /// When a queued document may be picked up (later than now after a failed attempt), or when the lease of the
+    /// worker indexing it runs out.
+    /// </summary>
     public DateTimeOffset NextAttemptAt { get; private set; }
 
     /// <summary>The embedding model its chunks were indexed with.</summary>
@@ -83,15 +86,21 @@ public sealed class Document
         };
     }
 
-    public void StartIndexing()
+    /// <summary>
+    /// A worker takes the document until <paramref name="leaseUntil"/>. A worker that dies mid-way leaves it
+    /// <c>Indexing</c>; once the lease runs out another worker may take it again.
+    /// </summary>
+    public void StartIndexing(DateTimeOffset now, DateTimeOffset leaseUntil)
     {
-        if (Status != DocumentStatus.Queued)
+        var expiredLease = Status == DocumentStatus.Indexing && NextAttemptAt <= now;
+        if (Status != DocumentStatus.Queued && !expiredLease)
         {
             throw new DomainException(ErrorCodes.InvalidState, $"Only a queued document can be indexed; this one is {Status}.");
         }
 
         Status = DocumentStatus.Indexing;
         Attempts++;
+        NextAttemptAt = leaseUntil;
     }
 
     public void MarkReady(string embeddingModel, DateTimeOffset now)
@@ -123,7 +132,7 @@ public sealed class Document
     /// <summary>Back in the queue from the start: after a failure, or to index it again with another model.</summary>
     public void Requeue(DateTimeOffset now)
     {
-        if (Status == DocumentStatus.Indexing)
+        if (Status == DocumentStatus.Indexing && NextAttemptAt > now)
         {
             throw new DomainException(ErrorCodes.InvalidState, "The document is being indexed right now; try again when it is done.");
         }

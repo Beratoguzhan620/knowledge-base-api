@@ -5,6 +5,8 @@ using System.Threading.RateLimiting;
 using KnowledgeBase.Api.Common;
 using KnowledgeBase.Api.Features.Auth;
 using KnowledgeBase.Api.Features.Documents;
+using KnowledgeBase.Api.Features.Indexing;
+using KnowledgeBase.Api.Features.Search;
 using KnowledgeBase.Api.Features.Workspaces;
 using KnowledgeBase.Api.Logging;
 using KnowledgeBase.Infrastructure;
@@ -39,6 +41,16 @@ builder.Services.AddOptions<DocumentLimits>()
     .Validate(l => l.ChunkCharacters is >= 300 and <= 4000, "Limits:ChunkCharacters must be between 300 and 4000.")
     .ValidateOnStart();
 builder.Services.AddScoped<DocumentIntake>();
+builder.Services.AddKnowledgeBaseEmbeddings(builder.Configuration);
+builder.Services.AddOptions<IndexerOptions>()
+    .Bind(builder.Configuration.GetSection(IndexerOptions.Section))
+    .Validate(o => o.Workers is >= 0 and <= 16, "Indexer:Workers must be between 0 and 16.")
+    .Validate(o => o.MaxAttempts is >= 1 and <= 20, "Indexer:MaxAttempts must be between 1 and 20.")
+    .Validate(o => o.LeaseMinutes >= 1 && o.PollSeconds >= 1, "Indexer:LeaseMinutes and Indexer:PollSeconds must be at least 1.")
+    .ValidateOnStart();
+builder.Services.AddSingleton<IndexingSignal>();
+builder.Services.AddSingleton<DocumentIndexer>();
+builder.Services.AddHostedService(services => services.GetRequiredService<DocumentIndexer>());
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
     options.MultipartBodyLengthLimit = 64L * 1024 * 1024);
 
@@ -110,6 +122,7 @@ app.MapAuthEndpoints();
 app.MapWorkspaceEndpoints();
 app.MapMemberEndpoints();
 app.MapDocumentEndpoints();
+app.MapSearchEndpoints();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
 app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
