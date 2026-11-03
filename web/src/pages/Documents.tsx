@@ -96,7 +96,9 @@ export function Documents() {
   const [page, reload] = useLoad(() => api.documents(workspace.id, { q: query, status, pageSize: 100 }), [workspace.id, query, status, tick]);
   const [usage, reloadUsage] = useLoad(() => api.usage(workspace.id), [workspace.id, tick]);
   const editor = canEdit(workspace.role);
-  const busy = (usage.data?.queued ?? 0) + (usage.data?.indexing ?? 0) > 0;
+  // Either answer may be a moment older than the other, so either one still waiting keeps the page checking.
+  const busy = (usage.data?.queued ?? 0) + (usage.data?.indexing ?? 0) > 0
+    || (page.data?.items.some((d) => d.status === "Queued" || d.status === "Indexing") ?? false);
 
   // While anything waits for indexing, check again every two seconds.
   useEffect(() => {
