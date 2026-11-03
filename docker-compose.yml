@@ -1,0 +1,41 @@
+# One command: docker compose up --build
+# API reference: http://localhost:8080/scalar
+name: knowledge-base
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: knowledge_base
+      POSTGRES_USER: knowledge_base
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-knowledge-base-local}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U knowledge_base -d knowledge_base"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: .
+    restart: on-failure
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__KnowledgeBase: "Host=db;Database=knowledge_base;Username=knowledge_base;Password=${POSTGRES_PASSWORD:-knowledge-base-local}"
+      Database__MigrateOnStartup: "true"
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-local-signing-key-change-me-in-the-env-file-0123456789}
+      Auth__AttemptsPerMinute: ${AUTH_ATTEMPTS_PER_MINUTE:-10}
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q Healthy <&3"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  db-data:
