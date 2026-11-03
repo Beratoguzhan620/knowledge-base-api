@@ -70,8 +70,9 @@ services:
       Chat__Provider: OpenAI
       Chat__BaseUrl: http://ollama:11434/v1/
       Chat__Model: ${CHAT_MODEL:-qwen2.5:1.5b}
-      # nomic-embed-text scores unrelated passages around 0.4 and related ones above 0.5.
-      Answers__MinSimilarity: "0.5"
+      # Measured with tests/eval: with nomic-embed-text the right passages scored 0.56 to 0.83 (the lowest, a bare
+      # product code, is found by its words), the best passage for a question outside the documents at most 0.63.
+      Answers__MinSimilarity: "0.64"
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q Healthy <&3"]
       interval: 5s
