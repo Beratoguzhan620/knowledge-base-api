@@ -1,0 +1,11 @@
+# Runs without downloading models: the built-in embeddings instead of Ollama.
+# Search still works by shared words and word stems; CI uses this to stay fast.
+#   docker compose -f docker-compose.yml -f docker-compose.light.yml up --build
+services:
+  ollama:
+    profiles: [ollama]
+  models:
+    profiles: [ollama]
+  api:
+    environment:
+      Embeddings__Provider: Local
