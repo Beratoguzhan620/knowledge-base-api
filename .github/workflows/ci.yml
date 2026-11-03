@@ -45,23 +45,8 @@ jobs:
       - name: Start the stack (built-in embeddings, no model download)
         run: docker compose -f docker-compose.yml -f docker-compose.light.yml up --build --detach --wait --wait-timeout 300
 
-      - name: Register, upload a document, wait for it to be indexed and search it
-        run: |
-          api=http://localhost:8080
-          session=$(curl -sf $api/api/auth/register -H 'Content-Type: application/json' -d '{"email":"ayse@example.com","displayName":"Ayşe","password":"smoke-test-password"}')
-          token=$(echo "$session" | jq -r .accessToken)
-          workspace=$(curl -sf $api/api/me -H "Authorization: Bearer $token" | jq -r '.workspaces[0].id')
-          printf '# Returns\n\nItems can be sent back within 14 days.\n\n## Refunds\n\nRefunds take 3 working days.\n' > returns.md
-          document=$(curl -sf $api/api/workspaces/$workspace/documents -H "Authorization: Bearer $token" -F file=@returns.md | jq -r .id)
-          curl -sf "$api/api/workspaces/$workspace/documents/$document/chunks" -H "Authorization: Bearer $token" | jq -e '.total == 2 and .items[1].heading == "Refunds"' > /dev/null
-          for i in $(seq 1 30); do
-            status=$(curl -sf "$api/api/workspaces/$workspace/documents/$document" -H "Authorization: Bearer $token" | jq -r .status)
-            [ "$status" = "Ready" ] && break
-            sleep 1
-          done
-          [ "$status" = "Ready" ]
-          curl -sf "$api/api/workspaces/$workspace/search?q=how%20long%20do%20refunds%20take" -H "Authorization: Bearer $token" | jq -e '.hits[0].heading == "Refunds"' > /dev/null
-          echo "A document was uploaded, split by heading, indexed in the background and found by search through the Compose stack."
+      - name: Register, upload, wait for indexing, search and ask
+        run: bash tests/smoke/ask.sh
 
       - name: Show logs
         if: failure()
@@ -70,3 +55,24 @@ jobs:
       - name: Stop the stack
         if: always()
         run: docker compose -f docker-compose.yml -f docker-compose.light.yml down --volumes
+
+  models:
+    name: With real models (Ollama)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start the stack and download the models
+        run: docker compose up --build --detach --wait --wait-timeout 900
+
+      - name: Register, upload, wait for indexing, search and ask
+        run: bash tests/smoke/ask.sh
+
+      - name: Show logs
+        if: failure()
+        run: docker compose logs --no-color api models
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose down --volumes
