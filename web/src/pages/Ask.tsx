@@ -140,7 +140,7 @@ export function Ask({ conversationId }: { conversationId?: string }) {
                   : <span className="muted row"><Loader2 size={15} className="spin" />{pending.sources === null ? "Searching the documents…" : `Reading ${pending.sources.length} passage${pending.sources.length === 1 ? "" : "s"}…`}</span>}
                 {pending.text && <span className="cursor" aria-hidden="true" />}
                 {pending.sources && pending.sources.length > 0 && !pending.text && (
-                  <SourceList workspaceId={workspace.id} sources={pending.sources} active={null} label="Passages found" />
+                  <SourceList workspaceId={workspace.id} sources={pending.sources} active={null} label="Passages found" compact />
                 )}
               </article>
             </>

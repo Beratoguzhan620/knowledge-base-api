@@ -20,10 +20,12 @@ export function CitedText({ text, onCite }: { text: string; onCite: (number: num
   );
 }
 
-export function SourceList({ workspaceId, sources, active, label }: { workspaceId: string; sources: Source[]; active: number | null; label: string }) {
+export function SourceList({ workspaceId, sources, active, label, compact = false }: {
+  workspaceId: string; sources: Source[]; active: number | null; label: string; compact?: boolean;
+}) {
   if (sources.length === 0) return null;
   return (
-    <div className="sources">
+    <div className={`sources${compact ? " compact" : ""}`}>
       <span className="sources-label">{label}</span>
       <ol>
         {sources.map((s) => (
@@ -33,7 +35,7 @@ export function SourceList({ workspaceId, sources, active, label }: { workspaceI
               <a className="source-place" {...linkProps(`/w/${workspaceId}/documents/${s.documentId}`)}>
                 <FileText size={13} />{place(s)}
               </a>
-              <p className="source-quote">{s.quote}</p>
+              {!compact && <p className="source-quote">{s.quote}</p>}
             </div>
           </li>
         ))}
