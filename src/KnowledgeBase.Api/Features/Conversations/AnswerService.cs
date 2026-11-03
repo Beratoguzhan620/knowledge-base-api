@@ -42,7 +42,7 @@ internal sealed partial class AnswerService(
         // The question alone decides what is relevant: mixing in the previous one would let an unrelated question
         // borrow its passages and be "answered". The model still sees the earlier turns for follow-ups.
         var hits = await search.SearchAsync(conversation.WorkspaceId, asked.Content, settings.Sources, SearchMode.Hybrid, ct);
-        var relevant = hits.Where(h => h.KeywordRank is not null || h.Similarity >= settings.MinSimilarity).ToList();
+        var relevant = hits.Where(h => h.Similarity >= settings.MinSimilarity || h.WordShare >= settings.MinWordShare).ToList();
         var sources = relevant.Select((h, i) => new AnswerSource(i + 1, h.ChunkId, h.DocumentId, h.DocumentTitle, h.Heading, h.Page, h.Text)).ToList();
         await send(new AnswerEvent.Sources(sources.Select(ToResponse).ToList()));
 

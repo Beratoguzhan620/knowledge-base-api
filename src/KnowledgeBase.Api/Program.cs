@@ -55,6 +55,7 @@ builder.Services.AddOptions<AnswerOptions>()
     .Bind(builder.Configuration.GetSection(AnswerOptions.Section))
     .Validate(o => o.Sources is >= 1 and <= 20, "Answers:Sources must be between 1 and 20.")
     .Validate(o => o.MinSimilarity is >= -1 and <= 1, "Answers:MinSimilarity must be between -1 and 1.")
+    .Validate(o => o.MinWordShare is > 0 and <= 1, "Answers:MinWordShare must be above 0 and at most 1.")
     .Validate(o => o.HistoryTurns is >= 0 and <= 10, "Answers:HistoryTurns must be between 0 and 10.")
     .ValidateOnStart();
 builder.Services.AddScoped<AnswerService>();

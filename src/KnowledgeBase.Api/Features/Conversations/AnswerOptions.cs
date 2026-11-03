@@ -9,11 +9,13 @@ public sealed class AnswerOptions
     public int Sources { get; set; } = 6;
 
     /// <summary>
-    /// A passage found only by meaning counts as relevant from this cosine similarity on; one that also shares a
-    /// word with the question always does. Depends on the embedding model: about 0.25 for the built-in one,
-    /// about 0.5 for nomic-embed-text.
+    /// A passage is relevant from this cosine similarity to the question on. It depends on the embedding model and
+    /// was measured on the sample questions (tests/eval): MIN_LOCAL for the built-in one, MIN_NOMIC for nomic-embed-text.
     /// </summary>
     public double MinSimilarity { get; set; } = 0.25;
+
+    /// <summary>A passage is also relevant when it holds this share of the question's words, like a product code asked alone.</summary>
+    public double MinWordShare { get; set; } = 0.6;
 
     /// <summary>Earlier questions and answers the model sees, to understand follow-ups.</summary>
     public int HistoryTurns { get; set; } = 3;

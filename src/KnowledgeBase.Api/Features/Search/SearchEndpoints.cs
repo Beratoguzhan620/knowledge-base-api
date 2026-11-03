@@ -14,7 +14,7 @@ namespace KnowledgeBase.Api.Features.Search;
 
 public sealed record SearchHitResponse(
     Guid ChunkId, Guid DocumentId, string DocumentTitle, int Ordinal, string? Heading, int? Page, string Text,
-    double Score, int? VectorRank, int? KeywordRank, double? Similarity);
+    double Score, int? VectorRank, int? KeywordRank, double? Similarity, double WordShare);
 
 public sealed record SearchResponse(string Query, SearchMode Mode, string EmbeddingModel, IReadOnlyList<SearchHitResponse> Hits);
 
@@ -51,7 +51,7 @@ internal static class SearchEndpoints
 
         var hits = await search.SearchAsync(workspaceId, query, limit, mode, ct);
         return TypedResults.Ok(new SearchResponse(query, mode, embeddings.Model, hits.Select(h => new SearchHitResponse(
-            h.ChunkId, h.DocumentId, h.DocumentTitle, h.Ordinal, h.Heading, h.Page, h.Text, h.Score, h.VectorRank, h.KeywordRank, h.Similarity)).ToList()));
+            h.ChunkId, h.DocumentId, h.DocumentTitle, h.Ordinal, h.Heading, h.Page, h.Text, h.Score, h.VectorRank, h.KeywordRank, h.Similarity, h.WordShare)).ToList()));
     }
 
     private static async Task<Accepted<ReindexResponse>> Reindex(
